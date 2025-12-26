@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <meta charset="UTF-8">
+    <title>Bulk Certificate Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="studio-card">
+        <div id="view-design">
+            <header>
+                <h1>Bulk Certificate Generator</h1>
+            </header>
+
+            <div class="input-row">
+                <div class="box"><label>CSV Data</label><input type="file" id="csv_input" accept=".csv" onchange="loadCsvData()"></div>
+                <div class="box"><label>Font (.ttf)</label><input type="file" id="font_input" accept=".ttf"></div>
+            </div>
+
+            <div class="template-upload-container">
+                <label class="btn-template">
+                    📤 Upload Certificate Template
+                    <input type="file" id="img_input" accept="image/*" hidden onchange="loadTemplate(this)">
+                </label>
+            </div>
+
+            <div class="canvas-box" id="canvas">
+                <div id="prompt">Template will appear here...</div>
+                <div id="image-wrapper" style="position: relative; display: inline-block;">
+                    <img id="preview" style="display:none; max-width: 100%; height: auto; display: block;">
+                    
+                    <div id="grid-5x5" class="grid-layer" style="display:none;">
+                        <div class="line v center-cross" style="left:50%"></div>
+                        <div class="line h center-cross" style="top:50%"></div>
+                        <div class="line v" style="left:20%"></div><div class="line v" style="left:40%"></div>
+                        <div class="line v" style="left:60%"></div><div class="line v" style="left:80%"></div>
+                        <div class="line h" style="top:20%"></div><div class="line h" style="top:40%"></div>
+                        <div class="line h" style="top:60%"></div><div class="line h" style="top:80%"></div>
+                    </div>
+                    <div id="sample">Sample Name</div>
+                </div>
+            </div>
+
+            <div class="input-row" style="margin-top:20px;">
+                <div class="box"><label>Font Size</label><input type="number" id="f_size" value="150" oninput="sync()"></div>
+                <div class="box" id="color-parent"><label>Color</label><input type="color" id="t_color" value="#6366f1" oninput="sync()"></div>
+            </div>
+            
+            <div class="input-row">
+                <div class="box"><label>Column Name</label><input type="text" id="col_name" placeholder="Name" oninput="updateText()"></div>
+                <div class="box">
+                    <label>Precision Tools</label>
+                    <div class="precision-controls">
+                        <button type="button" onclick="snapToCenter()" class="center-btn">🎯 Center</button>
+                        <div class="arrow-grid">
+                            <button type="button" class="nudge-btn up" onclick="nudge(0, -0.002)">▲</button>
+                            <button type="button" class="nudge-btn left" onclick="nudge(-0.002, 0)">◀</button>
+                            <button type="button" class="nudge-btn right" onclick="nudge(0.002, 0)">▶</button>
+                            <button type="button" class="nudge-btn down" onclick="nudge(0, 0.002)">▼</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" id="px" value="0.5"><input type="hidden" id="py" value="0.5">
+            <button onclick="startBatch()" class="main-btn">Produce Batch Production</button>
+        </div>
+
+        <div id="view-wait" style="display:none; text-align:center;">
+            <h2 class="rendering-title">Rendering Certificates</h2>
+            <div class="count-badge"><span id="p-current">0</span> / <span id="p-total">0</span></div>
+            <div class="progress-track">
+                <div id="p-bar"></div>
+            </div>
+            <p id="p-status">Processing...</p>
+        </div>
+
+        <div id="view-done" style="display:none; text-align:center;">
+            <div class="success-icon">🏆</div>
+            <h2 style="margin-bottom: 20px;">Batch Finished!</h2>
+            <div class="button-stack">
+                <a href="/download" class="attractive-download-btn">Download ZIP Archive ⬇️</a>
+                <button onclick="location.reload()" class="outline-reset-btn">Start New Design +</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const preview = document.getElementById('preview'), wrapper = document.getElementById('image-wrapper');
+        const sample = document.getElementById('sample'), colorPicker = document.getElementById('t_color');
+
+        function loadCsvData() {
+            const file = document.getElementById('csv_input').files[0];
+            const colName = document.getElementById('col_name').value;
+            if (!file || !colName) return;
+            Papa.parse(file, { header: true, complete: function(res) {
+                if (res.data.length > 0 && res.data[0][colName]) { sample.innerText = res.data[0][colName]; }
+            }});
+        }
+
+        function loadTemplate(input) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                preview.src = ev.target.result;
+                preview.style.display = "block";
+                document.getElementById('prompt').style.display = "none";
+                document.getElementById('grid-5x5').style.display = "block";
+                sample.style.display = "block";
+                setTimeout(sync, 50);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+
+        document.getElementById('font_input').onchange = e => {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const fontName = 'LiveFont_' + Date.now();
+                const fontFace = new FontFace(fontName, ev.target.result);
+                fontFace.load().then(f => { document.fonts.add(f); sample.style.fontFamily = fontName; });
+            };
+            reader.readAsArrayBuffer(e.target.files[0]);
+        };
+
+        wrapper.onclick = e => {
+            if (preview.style.display === "none") return;
+            const r = wrapper.getBoundingClientRect();
+            document.getElementById('px').value = (e.clientX - r.left) / r.width;
+            document.getElementById('py').value = (e.clientY - r.top) / r.height;
+            sync();
+        };
+
+        function snapToCenter() { document.getElementById('px').value = 0.5; document.getElementById('py').value = 0.5; sync(); }
+        function nudge(dx, dy) {
+            document.getElementById('px').value = parseFloat(document.getElementById('px').value) + dx;
+            document.getElementById('py').value = parseFloat(document.getElementById('py').value) + dy;
+            sync();
+        }
+        function updateText() { loadCsvData(); }
+
+        function sync() {
+            const x = document.getElementById('px').value, y = document.getElementById('py').value;
+            sample.style.left = (x * 100) + '%'; 
+            sample.style.top = (y * 100) + '%';
+            sample.style.color = colorPicker.value;
+            colorPicker.style.backgroundColor = colorPicker.value;
+            const scale = preview.clientWidth / preview.naturalWidth;
+            sample.style.fontSize = (document.getElementById('f_size').value * scale) + 'px';
+        }
+
+        async function startBatch() {
+            const formData = new FormData();
+            formData.append('csv_file', document.getElementById('csv_input').files[0]);
+            formData.append('font_file', document.getElementById('font_input').files[0]);
+            formData.append('image_file', document.getElementById('img_input').files[0]);
+            formData.append('column', document.getElementById('col_name').value);
+            formData.append('pos_x', document.getElementById('px').value);
+            formData.append('pos_y', document.getElementById('py').value);
+            formData.append('font_size', document.getElementById('f_size').value);
+            formData.append('text_color', colorPicker.value);
+
+            document.getElementById('view-design').style.display = 'none';
+            document.getElementById('view-wait').style.display = 'block';
+
+            const res = await fetch('/generate', { method: 'POST', body: formData });
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const lines = decoder.decode(value).split('\n');
+                lines.forEach(line => {
+                    if (line.startsWith('data: ')) {
+                        const d = JSON.parse(line.replace('data: ', ''));
+                        document.getElementById('p-bar').style.width = (d.current / d.total * 100) + '%';
+                        document.getElementById('p-current').innerText = d.current;
+                        document.getElementById('p-total').innerText = d.total;
+                        document.getElementById('p-status').innerText = `Rendering: ${d.name}`;
+                        if (d.done) {
+                            document.getElementById('view-wait').style.display = 'none';
+                            document.getElementById('view-done').style.display = 'block';
+                            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

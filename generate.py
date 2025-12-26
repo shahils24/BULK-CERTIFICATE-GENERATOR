@@ -1,19 +1,22 @@
 from PIL import Image, ImageDraw, ImageFont
-import os, pandas as pd, re, zipfile
+import os, pandas as pd, re, zipfile, shutil
 
 def hex_to_rgb(h):
     h = h.lstrip('#')
     return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
 
-# Added base_temp parameter to receive the /tmp path from main.py
 def generate_certificates(csv_path, img_path, font_path, column, x, y, size, hex_color, base_temp):
     data = pd.read_csv(csv_path)
     total = len(data)
     font = ImageFont.truetype(font_path, int(size))
     rgb_color = hex_to_rgb(hex_color)
     
-    # Use the base_temp passed from main.py
+    # Path setup
     output_dir = os.path.join(base_temp, "output")
+    
+    # Clean and recreate output directory to ensure a fresh batch
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     for index, row in data.iterrows():
@@ -30,7 +33,7 @@ def generate_certificates(csv_path, img_path, font_path, column, x, y, size, hex
             
             draw.text((rx, ry), name, fill=rgb_color, font=font)
             
-            # Remove characters that aren't allowed in filenames
+            # Filename safety
             safe_name = re.sub(r'[\\/*?:"<>|]', "", name)
             cert.save(os.path.join(output_dir, f"{index+1}_{safe_name}.png"))
             

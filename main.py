@@ -7,17 +7,23 @@ import os, shutil, json, asyncio
 from generate import generate_certificates
 
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
 
-# Vercel fix: Use /tmp for all write operations
+# --- VERCEL PATH FIX ---
+# Get the absolute path of the directory where main.py is located
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+# Use absolute paths for templates and static mounting
+templates = Jinja2Templates(directory=os.path.join(BASE_PATH, "templates"))
+
+# Vercel writeable directory
 BASE_TEMP = "/tmp/bulk_certs"
 
-# Ensure folders exist
-os.makedirs("static", exist_ok=True)
-os.makedirs("templates", exist_ok=True)
+# Ensure /tmp folder exists
 os.makedirs(BASE_TEMP, exist_ok=True)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static files using an absolute path
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_PATH, "static")), name="static")
+# -----------------------
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -44,15 +50,12 @@ async def generate(
     c_p = f"{BASE_TEMP}/data.csv"
     i_p = f"{BASE_TEMP}/template.png"
     f_p = f"{BASE_TEMP}/fonts/font.ttf"
-    z_p = f"{BASE_TEMP}/certificates.zip"
 
     with open(c_p, "wb") as f: shutil.copyfileobj(csv_file.file, f)
     with open(i_p, "wb") as f: shutil.copyfileobj(image_file.file, f)
     with open(f_p, "wb") as f: shutil.copyfileobj(font_file.file, f)
 
     async def progress_stream():
-        # IMPORTANT: Ensure your generate_certificates function in generate.py 
-        # is also updated to save the final ZIP in BASE_TEMP (f"{BASE_TEMP}/certificates.zip")
         for status in generate_certificates(c_p, i_p, f_p, column, pos_x, pos_y, font_size, text_color, BASE_TEMP):
             yield f"data: {json.dumps(status)}\n\n"
             await asyncio.sleep(0.01)
@@ -61,8 +64,7 @@ async def generate(
 
 @app.get("/download")
 async def download():
-    # Points to the zip in the /tmp folder
-    zip_path = f"{BASE_TEMP}/certificates.zip"
+    zip_path = os.path.join(BASE_TEMP, "certificates.zip")
     if os.path.exists(zip_path):
         return FileResponse(zip_path, filename="certificates.zip")
     return {"error": "File not found. Please generate certificates again."}

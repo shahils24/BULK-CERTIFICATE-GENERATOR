@@ -8,22 +8,17 @@ from generate import generate_certificates
 
 app = FastAPI()
 
-# --- VERCEL PATH FIX ---
-# Get the absolute path of the directory where main.py is located
-BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+# Render handles relative paths well, but absolute paths are even safer
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Use absolute paths for templates and static mounting
-templates = Jinja2Templates(directory=os.path.join(BASE_PATH, "templates"))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
-# Vercel writeable directory
-BASE_TEMP = "/tmp/bulk_certs"
+# Local 'temp' folder works on Render
+BASE_TEMP = os.path.join(BASE_DIR, "temp")
 
-# Ensure /tmp folder exists
+# Initial folder setup
 os.makedirs(BASE_TEMP, exist_ok=True)
-
-# Mount static files using an absolute path
-app.mount("/static", StaticFiles(directory=os.path.join(BASE_PATH, "static")), name="static")
-# -----------------------
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -40,22 +35,23 @@ async def generate(
     font_size: str = Form(...),
     text_color: str = Form(...)
 ):
-    # Refresh the specific app temp folder
+    # Clean previous run
     if os.path.exists(BASE_TEMP): 
         shutil.rmtree(BASE_TEMP)
     
-    os.makedirs(f"{BASE_TEMP}/fonts", exist_ok=True)
-    os.makedirs(f"{BASE_TEMP}/output", exist_ok=True)
+    os.makedirs(os.path.join(BASE_TEMP, "fonts"), exist_ok=True)
+    os.makedirs(os.path.join(BASE_TEMP, "output"), exist_ok=True)
 
-    c_p = f"{BASE_TEMP}/data.csv"
-    i_p = f"{BASE_TEMP}/template.png"
-    f_p = f"{BASE_TEMP}/fonts/font.ttf"
+    c_p = os.path.join(BASE_TEMP, "data.csv")
+    i_p = os.path.join(BASE_TEMP, "template.png")
+    f_p = os.path.join(BASE_TEMP, "fonts", "font.ttf")
 
     with open(c_p, "wb") as f: shutil.copyfileobj(csv_file.file, f)
     with open(i_p, "wb") as f: shutil.copyfileobj(image_file.file, f)
     with open(f_p, "wb") as f: shutil.copyfileobj(font_file.file, f)
 
     async def progress_stream():
+        # Ensure generate_certificates is using the 9th argument for the base path
         for status in generate_certificates(c_p, i_p, f_p, column, pos_x, pos_y, font_size, text_color, BASE_TEMP):
             yield f"data: {json.dumps(status)}\n\n"
             await asyncio.sleep(0.01)
@@ -67,4 +63,4 @@ async def download():
     zip_path = os.path.join(BASE_TEMP, "certificates.zip")
     if os.path.exists(zip_path):
         return FileResponse(zip_path, filename="certificates.zip")
-    return {"error": "File not found. Please generate certificates again."}
+    return {"error": "File not found. Please generate again."}

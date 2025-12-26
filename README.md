@@ -2,6 +2,8 @@
 
 Bulk Certificate Generator is a professional-grade tool designed for organizations, event organizers, and educators who need to generate high-quality certificates in bulk with precision. 
 
+🚀 **Try it live:** [Bulk Certificate Generator](https://bulk-certificate-generator.onrender.com/)
+
 ## 🚀 Key Features
 
 * **Live Designer Suite:** Preview your design using real data before starting the batch.
@@ -14,14 +16,31 @@ Bulk Certificate Generator is a professional-grade tool designed for organizatio
 * **Professional UI:** Features a dark-mode studio interface with glassmorphism elements and cheerful success celebrations.
 
 ## 🛠️ Tech Stack
-
-* **Backend:** Python 3.10+, FastAPI
-* **Processing:** Pillow (PIL), Pandas
-* **Frontend:** HTML5, CSS3, JavaScript (Vanilla)
-* **Animations:** Canvas-Confetti
-
+* **Python**: Core programming language.
+* **FastAPI**: Modern, high-performance web framework for the API.
+* **Pillow (PIL)**: The engine used for high-quality image manipulation and text drawing.
+* **Pandas**: Used for efficient CSV data parsing and manipulation.
+* **Uvicorn**: Lightning-fast ASGI server implementation for production.
+* **Jinja2**: HTML templating engine for the frontend.
+* **JavaScript (Fetch API)**: Used for handling real-time streaming updates.
+* 
 ## 📦 Quick Start
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
+## 🛠️ Local Installation
+
+### 1. Prerequisites
+Ensure you have **Python 3.9+** installed.
+
+### 2. Setup
+```bash
+# Clone the repository
+git clone [https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git)
+cd YOUR_REPO_NAME
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Mac/Linux
+venv\Scripts\activate     # Windows
+
+# Install dependencies
+pip install -r requirements.txt

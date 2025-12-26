@@ -9,8 +9,13 @@ from generate import generate_certificates
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-for folder in ["static", "templates", "temp"]:
-    os.makedirs(folder, exist_ok=True)
+# Vercel fix: Use /tmp for all write operations
+BASE_TEMP = "/tmp/bulk_certs"
+
+# Ensure folders exist
+os.makedirs("static", exist_ok=True)
+os.makedirs("templates", exist_ok=True)
+os.makedirs(BASE_TEMP, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -29,18 +34,26 @@ async def generate(
     font_size: str = Form(...),
     text_color: str = Form(...)
 ):
-    if os.path.exists("temp"): shutil.rmtree("temp")
-    os.makedirs("temp/fonts", exist_ok=True)
-    os.makedirs("temp/output", exist_ok=True)
+    # Refresh the specific app temp folder
+    if os.path.exists(BASE_TEMP): 
+        shutil.rmtree(BASE_TEMP)
+    
+    os.makedirs(f"{BASE_TEMP}/fonts", exist_ok=True)
+    os.makedirs(f"{BASE_TEMP}/output", exist_ok=True)
 
-    c_p, i_p, f_p = "temp/data.csv", "temp/template.png", "temp/fonts/font.ttf"
+    c_p = f"{BASE_TEMP}/data.csv"
+    i_p = f"{BASE_TEMP}/template.png"
+    f_p = f"{BASE_TEMP}/fonts/font.ttf"
+    z_p = f"{BASE_TEMP}/certificates.zip"
 
     with open(c_p, "wb") as f: shutil.copyfileobj(csv_file.file, f)
     with open(i_p, "wb") as f: shutil.copyfileobj(image_file.file, f)
     with open(f_p, "wb") as f: shutil.copyfileobj(font_file.file, f)
 
     async def progress_stream():
-        for status in generate_certificates(c_p, i_p, f_p, column, pos_x, pos_y, font_size, text_color):
+        # IMPORTANT: Ensure your generate_certificates function in generate.py 
+        # is also updated to save the final ZIP in BASE_TEMP (f"{BASE_TEMP}/certificates.zip")
+        for status in generate_certificates(c_p, i_p, f_p, column, pos_x, pos_y, font_size, text_color, BASE_TEMP):
             yield f"data: {json.dumps(status)}\n\n"
             await asyncio.sleep(0.01)
 
@@ -48,4 +61,8 @@ async def generate(
 
 @app.get("/download")
 async def download():
-    return FileResponse("temp/certificates.zip", filename="certificates.zip")
+    # Points to the zip in the /tmp folder
+    zip_path = f"{BASE_TEMP}/certificates.zip"
+    if os.path.exists(zip_path):
+        return FileResponse(zip_path, filename="certificates.zip")
+    return {"error": "File not found. Please generate certificates again."}

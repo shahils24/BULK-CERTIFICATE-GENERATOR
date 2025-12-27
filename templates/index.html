@@ -70,7 +70,7 @@
         </div>
 
         <div id="view-wait" style="display:none; text-align:center;">
-            <h2 class="rendering-title">Rendering Certificates</h2>
+            <h2 class="rendering-title">Generating Certificates</h2>
             <div class="count-badge"><span id="p-current">0</span> / <span id="p-total">0</span></div>
             <div class="progress-track">
                 <div id="p-bar"></div>
@@ -189,7 +189,7 @@
                         document.getElementById('p-bar').style.width = (d.current / d.total * 100) + '%';
                         document.getElementById('p-current').innerText = d.current;
                         document.getElementById('p-total').innerText = d.total;
-                        document.getElementById('p-status').innerText = `Rendering: ${d.name}`;
+                        document.getElementById('p-status').innerText = `Generating Certificate: ${d.name}`;
                         if (d.done) {
                             document.getElementById('view-wait').style.display = 'none';
                             document.getElementById('view-done').style.display = 'block';
@@ -202,3 +202,4 @@
     </script>
 </body>
 </html>
+

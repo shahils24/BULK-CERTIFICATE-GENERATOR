@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, Request
+from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -8,16 +8,11 @@ from generate import generate_certificates
 
 app = FastAPI()
 
-# Render handles relative paths well, but absolute paths are even safer
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
-# Local 'temp' folder works on Render
 BASE_TEMP = os.path.join(BASE_DIR, "temp")
-
-# Initial folder setup
 os.makedirs(BASE_TEMP, exist_ok=True)
 
 @app.get("/", response_class=HTMLResponse)
@@ -35,7 +30,10 @@ async def generate(
     font_size: str = Form(...),
     text_color: str = Form(...)
 ):
-    # Clean previous run
+    # BACKEND VALIDATION: Ensure filenames exist and aren't empty
+    if not csv_file.filename or not image_file.filename or not font_file.filename:
+        return {"error": "All files (CSV, Template, Font) are required."}
+
     if os.path.exists(BASE_TEMP): 
         shutil.rmtree(BASE_TEMP)
     
@@ -51,7 +49,6 @@ async def generate(
     with open(f_p, "wb") as f: shutil.copyfileobj(font_file.file, f)
 
     async def progress_stream():
-        # Ensure generate_certificates is using the 9th argument for the base path
         for status in generate_certificates(c_p, i_p, f_p, column, pos_x, pos_y, font_size, text_color, BASE_TEMP):
             yield f"data: {json.dumps(status)}\n\n"
             await asyncio.sleep(0.01)

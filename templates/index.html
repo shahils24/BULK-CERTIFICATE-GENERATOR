@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="stylesheet" href="static/style.css">
     <meta charset="UTF-8">
     <title>Bulk Certificate Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
@@ -152,11 +151,22 @@
         }
 
         async function startBatch() {
+            // STRICT VALIDATION ADDED HERE
+            const csvInput = document.getElementById('csv_input');
+            const fontInput = document.getElementById('font_input');
+            const imgInput = document.getElementById('img_input');
+            const colName = document.getElementById('col_name').value;
+
+            if (!csvInput.files[0] || !fontInput.files[0] || !imgInput.files[0] || !colName) {
+                alert("⚠️ Please upload CSV, Font, and Template, and enter a Column Name before starting.");
+                return;
+            }
+
             const formData = new FormData();
-            formData.append('csv_file', document.getElementById('csv_input').files[0]);
-            formData.append('font_file', document.getElementById('font_input').files[0]);
-            formData.append('image_file', document.getElementById('img_input').files[0]);
-            formData.append('column', document.getElementById('col_name').value);
+            formData.append('csv_file', csvInput.files[0]);
+            formData.append('font_file', fontInput.files[0]);
+            formData.append('image_file', imgInput.files[0]);
+            formData.append('column', colName);
             formData.append('pos_x', document.getElementById('px').value);
             formData.append('pos_y', document.getElementById('py').value);
             formData.append('font_size', document.getElementById('f_size').value);
@@ -191,5 +201,4 @@
         }
     </script>
 </body>
-
 </html>
